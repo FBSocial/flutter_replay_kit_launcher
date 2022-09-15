@@ -6,6 +6,10 @@ class ReplayKitLauncher {
   static const MethodChannel _channel =
       const MethodChannel('replay_kit_launcher');
 
+  /// 用于事件检测
+  final EventChannel eventChannel =
+      EventChannel('plugins.flutter.io/replay.event.channel');
+
   /// This function will directly create a free RPSystemBroadcastPickerView and automatically click the View to launch ReplayKit
   ///
   /// [extensionName] is your `BroadCast Upload Extension` target's `Product Name`,
@@ -28,5 +32,10 @@ class ReplayKitLauncher {
 
     return await _channel.invokeMethod(
         'finishReplayKitBroadcast', {'notificationName': notificationName});
+  }
+
+  /// 检测是否开启了屏幕共享
+  Future<bool?> isScreen() async {
+    return await _channel.invokeMethod('isScreen');
   }
 }
