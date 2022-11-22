@@ -1,6 +1,12 @@
 #import "ReplayKitLauncherPlugin.h"
 #import <ReplayKit/ReplayKit.h>
 
+@interface ReplayKitLauncherPlugin()<FlutterStreamHandler>
+//@property FlutterEventSink eventSinkAction;
+
+@property (nonatomic, strong)FlutterMethodChannel* methodChannel;
+
+@end
 
 @implementation ReplayKitLauncherPlugin
 
@@ -24,6 +30,7 @@ static ReplayKitLauncherPlugin* _instance = nil;
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
     FlutterMethodChannel* channel = [FlutterMethodChannel methodChannelWithName:@"replay_kit_launcher" binaryMessenger:[registrar messenger]];
     ReplayKitLauncherPlugin* instance = [[ReplayKitLauncherPlugin alloc] init];
+    instance.methodChannel = channel;
     [registrar addMethodCallDelegate:instance channel:channel];
     
     FlutterEventChannel* eventChannel =
@@ -35,6 +42,13 @@ static ReplayKitLauncherPlugin* _instance = nil;
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
     
     if ([@"launchReplayKitBroadcast" isEqualToString:call.method]) {
+    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
+                                            (__bridge const void *)(self),
+                                            onBroadcastStarted,
+                                            (CFStringRef)@"ZGStartedBroadcastUploadExtensionProcessENDNotification",
+                                            NULL,
+                                            CFNotificationSuspensionBehaviorDeliverImmediately);
+
         // Add an observer for stop broadcast notification
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
                                         (__bridge const void *)(self),
@@ -72,7 +86,30 @@ static ReplayKitLauncherPlugin* _instance = nil;
 }
 
 // Handle stop broadcast notification from main app process
+void onBroadcastStarted(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
+
+    NSLog(@"监听到的 ==> onBroadcastFinish ==> IOS端");
+
+//    [[ReplayKitLauncherPlugin shareInstance].eventSinkAction:@""];
+//    [[ReplayKitLauncherPlugin shareInstance] notificationCallbackReceivedWithName:@"发送事件"];
+//    eventSinkAction(@"launchReplayKitBroadcast");
+
+    //向flutter层发送消息
+    ReplayKitLauncherPlugin *sender = (__bridge ReplayKitLauncherPlugin *)observer;
+    [sender.methodChannel invokeMethod:@"screenShareState" arguments:@"fb_broadcastStartedWithSetupInfo"];
+
+    // Remove observer for stop broadcast notification
+    CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(),
+                                       NULL,//(__bridge const void *)(self)
+                                       (CFStringRef)@"ZGStartedBroadcastUploadExtensionProcessENDNotification",
+                                       NULL);
+}
+
 void onBroadcastFinish(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
+    //向flutter层发送消息
+    ReplayKitLauncherPlugin *sender = (__bridge ReplayKitLauncherPlugin *)observer;
+    [sender.methodChannel invokeMethod:@"screenShareState" arguments:@"fb_broadcastFinished"];
+
     // Remove observer for stop broadcast notification
     CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(),
                                        NULL,

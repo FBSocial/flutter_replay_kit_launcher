@@ -38,4 +38,7 @@ class ReplayKitLauncher {
   Future<bool?> isScreen() async {
     return await _channel.invokeMethod('isScreen');
   }
+
+
+  static void setMethodCallHandler(Future<dynamic> Function(MethodCall call)? handler) => _channel.setMethodCallHandler(handler);
 }
